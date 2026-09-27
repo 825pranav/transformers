@@ -78,6 +78,70 @@ class JsonSchemaGeneratorTest(unittest.TestCase):
         }
         self.assertEqual(schema["function"], expected_schema)
 
+    def test_union_with_complex_subtypes(self):
+        from typing import Literal
+
+        def fn(x: str | list[str], y: Literal["celsius", "fahrenheit"] | int):
+            """
+            Test function
+
+            Args:
+                x: The first input
+                y: The second input
+            """
+            return x
+
+        schema = get_json_schema(fn)
+        expected_schema = {
+            "name": "fn",
+            "description": "Test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
+                        "description": "The first input",
+                    },
+                    "y": {
+                        "anyOf": [{"type": "string", "enum": ["celsius", "fahrenheit"]}, {"type": "integer"}],
+                        "description": "The second input",
+                    },
+                },
+                "required": ["x", "y"],
+            },
+        }
+        self.assertEqual(schema["function"], expected_schema)
+
+    def test_union_of_lists_keeps_items(self):
+        def fn(x: list[str] | list[int]):
+            """
+            Test function
+
+            Args:
+                x: The input
+            """
+            return x
+
+        schema = get_json_schema(fn)
+        expected_schema = {
+            "name": "fn",
+            "description": "Test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "anyOf": [
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "array", "items": {"type": "integer"}},
+                        ],
+                        "description": "The input",
+                    }
+                },
+                "required": ["x"],
+            },
+        }
+        self.assertEqual(schema["function"], expected_schema)
+
     def test_optional(self):
         def fn(x: int | None):
             """
